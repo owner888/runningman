@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1,user-scalable=no, maximum-scale=1">
+    <title>裸跑吧兄弟~</title>
+        <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        body,html{
+            height: 100%;
+        }
+        .warp{
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .warp span{
+            display: block;
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            bottom: 0;
+            border-radius: 50%;
+            margin-left: -10px;
+        }
+        .red{
+            background: red;
+            left:25%;
+
+        }
+        .blue{
+            left:75%;
+            background: blue;
+            background: blue;
+        }
+        .pop{
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(209,210,211,0.8);
+            z-index: 2;
+            display: table;
+        }
+        .pop1,.pop2,.pop3{
+            display: none;
+        }
+
+        .pop p{
+            text-align: center;
+            font-size: 20em;
+            color: red;
+            height: 100%;
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .pop1 p,.pop2 p,.pop3 p{
+            font-size: 1.2em;
+            width: 100%;
+        }
+        .pop2 input{
+            border: none;
+            border: 1px solid #ccc;
+            padding-left: 5px;;
+            width: 70%;
+            height: 40px;
+            border-radius: 8px;
+        }
+        .pop2 a,.pop3 a{
+            display: block;
+            text-decoration: none;
+            width: 50%;
+            margin: 10px auto;
+            background: #fff;
+            border-radius: 8px;
+            color: #888;
+
+        }
+        .pop3 a{
+            width: 50%;;
+        }
+        .warp em{
+            font-style: normal;
+            position: absolute;
+            color: red;
+            top: 5px;
+            display: block;
+            width: 50%;
+            text-align: center;
+        }
+        .warp em.red_explain{
+            left: 0;
+        }
+        .warp em.blue_explain {
+            left: 50%;
+            color:blue;
+        }
+    </style>
+</head>
+<body onLoad="init();" ondragstart='return false' onselectstart='return false'>
+<div class="pop pop1">
+    <p>
+        正在给你寻找傻逼。。。
+    </p>
+</div>
+<div class="pop pop2">
+    <p>
+        <input type="text" id="username" placeholder="请输入你的名字"/>
+        <a href="javascript:;">确定</a>
+    </p>
+
+</div>
+<div class="pop pop3">
+    <p>
+        <span>
+        </span>
+        <a href="javascript:;" class="restart">重新开始</a>
+        <a href="javascript:;" class="change_username">修改昵称</a>
+    </p>
+</div>
+<div class="warp">
+    <em class="red_explain"></em>
+    <em class="blue_explain"></em>
+    <span class="red">
+
+    </span>
+    <span class="blue">
+
+    </span>
+</div>
+<script src="static/js/jquery-1.9.1.min.js"></script>
+<script src="static/js/uuid.min.js"></script>
+<script src="static/js/cookie.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){ 
+    // 禁止苹果iphone浏览器拖动反弹（橡皮筋效果
+    function stopScrolling( touchEvent ) { 
+        touchEvent.preventDefault(); 
+    } 
+    // 这里不要所有都禁止，否则连输入框都无法输入内容，只在 .warp div 点击事件禁止就好
+    //document.addEventListener( 'touchstart' , stopScrolling , false ); 
+    document.addEventListener( 'touchmove' , stopScrolling , false ); 
+});
+
+var uuid = "";
+var username = "";
+var windowMaxHeight = $('body').height()-20;
+var playing = false;
+var startTime = 3;
+var stime;
+
+function popshow(obj){
+    $(obj).show();
+    $(obj).css({ display: 'table'})
+}
+
+function pophide(obj){
+    $(obj).hide();
+}
+
+$('.change_username').on("click",function(e){
+    pophide('.pop1');
+    pophide('.pop3');
+    popshow('.pop2');
+});
+$('.restart').on("click",function(e){
+    //start();
+    location.reload();
+    return;
+});
+
+//$('.pop2 a').click(function(){
+$('.pop2 a').on("click",function(e){
+    username = $("#username").val();
+    if (username == "" || username == null || username == undefined) {
+        alert("请输入您的名字！");
+        return;
+    }
+    $.cookie('username', username);
+    pophide('.pop2');
+    location.reload();
+    //start();
+});
+
+// 步数
+var runStep = 10;
+// 速度
+var speed = windowMaxHeight/runStep;
+var redRunIndex = blueRunIndex = 0;
+
+// 删除cookie
+//$.cookie('uuid', '', { expires: -1 });
+var uuid = $.cookie('uuid');
+// 生成用户唯一标识
+if (uuid == null || uuid == undefined || uuid == '') {
+    uuid = Math.uuid();
+    $.cookie('uuid', uuid);
+}
+var ws;
+
+function init() {
+
+    username = $.cookie('username');
+    if (username == null || username == undefined || username == '') {
+        popshow('.pop2');
+        return;
+    }
+    start();
+}
+
+function start() {
+
+    popshow('.pop1');
+    //console.log("init");
+    if (ws != null) {
+        ws.close();
+        ws = null;
+    }
+    var path = "/json?utma="+uuid+"&name="+username;
+    ws = new WebSocket("ws://localhost:23456" + path);
+    //ws = new WebSocket("ws://120.132.42.147:23456" + path);
+    ws.onopen = function () {
+        strJSON = JSON.stringify({Event:"onopen", Msg: "successful"})
+        ws.send(strJSON);
+        //console.log("onopen");
+    };
+    ws.onmessage = function (e) {
+        obj = JSON.parse(e.data);
+        if (obj.Event == "SelfRun" || obj.Event == "MatchRun") {
+            run(obj.Event);
+        } else if (obj.Event == "Playing") {
+            $('.pop1 p').text("找到傻逼一枚，游戏开始。。。");
+            stime = setInterval(function(){
+                if ( startTime == 0 ) {
+                    clearInterval(stime);
+                    pophide('.pop1');
+                }
+                startTime--;
+                $('.pop1 p').text(startTime+1);
+            },1000);
+
+            playing = true;
+        } else if (obj.Event == "ChangeName") {
+            var names = obj.Content.split(',');
+            $(".red_explain").text(names[0]);
+            $(".blue_explain").text(names[1]);
+        } else if (obj.Event == "OutRoom") {
+            //alert("对面用户已经退出");
+            //location.reload();
+            return;
+        }
+    }
+    ws.onclose = function (e) {
+        console.log("closed");
+    };
+};
+
+function run(e) {
+    //console.log(e)
+    if (!playing) {
+        return;
+    }
+    if (e == "SelfRun") {
+        isSelf = 1; 
+    } else {
+        isSelf = 0; 
+    }
+    // 如果是自己点击，指示红球动
+    if (isSelf == 1) {
+        if(!$('.red').is(":animated")){
+            redRunIndex++;
+            //ws.send(1);
+            var redMaxHeight=redRunIndex*speed;
+            if(redMaxHeight>=windowMaxHeight){
+                redMaxHeight=windowMaxHeight;
+            }
+            $('.red').animate({'bottom':redMaxHeight}, function(){
+                if (redRunIndex >= runStep) {
+                    // 跑完啦
+                    playing = false;
+                    $(".pop3 span").text("哈哈哈，干掉傻×易如反掌啊。。。");
+                    popshow('.pop3');
+                    //alert("我方赢");
+                    //location.reload();
+                    return;
+                    //runStep = 0;
+                    //$(this).css("bottom", 0);
+                }
+            });
+        }
+    } else {
+
+        if(!$('.blue').is(":animated")){
+            blueRunIndex++;
+            var blueMaxHeight=blueRunIndex*speed;
+            if(blueMaxHeight>=windowMaxHeight){
+                blueMaxHeight=windowMaxHeight;
+            }
+            $('.blue').animate({'bottom':blueMaxHeight}, function(){
+                if (blueRunIndex >= runStep) {
+                    // 跑完啦
+                    playing = false;
+                    $(".pop3 span").text("我擦，居然被那个傻×赢了");
+                    popshow('.pop3');
+                    //alert("对方赢");
+                    //location.reload();
+                    return;
+                }
+            });
+        }
+
+    }
+}
+
+// android 貌似有点不行
+$('.warp').on("touchstart mousedown",function(e){
+//$('.warp').on("touchstart",function(e){
+//$('.warp').on("click",function(e){
+    // 阻止浏览器默认动作(a标签跳转，屏幕滑动，双击放大等)
+    e.preventDefault();
+    if (playing) {
+        strJSON = JSON.stringify({Event:"Run", Msg: "running"})
+        ws.send(strJSON);
+    }
+});
+
+</script>
+</body>
+</html>
+
+
